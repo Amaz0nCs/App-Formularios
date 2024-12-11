@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'form_screen.dart';
+import 'package:prueba/screens/form_screen.dart';
 
 class FormSelectionScreen extends StatelessWidget {
   final String patente;

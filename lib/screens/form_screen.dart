@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'mant_form.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:prueba/controllers/geocoding_service.dart';
 
@@ -34,6 +35,7 @@ class _FormScreenState extends State<FormScreen> {
   String? kilometraje;
   String? fecha;
   String? hora;
+  String? destinoActividad;
   CameraController? _cameraController;
   XFile? odometroImage;
   List<CameraDescription>? cameras;
@@ -105,6 +107,7 @@ class _FormScreenState extends State<FormScreen> {
     }
   }
 
+
   // Función para subir la imagen y obtener el kilometraje
   Future<void> _uploadOdometroImage() async {
     if (odometroImage == null) {
@@ -143,6 +146,48 @@ class _FormScreenState extends State<FormScreen> {
     }
   }
 
+  // Función para enviar los datos del formulario
+  Future<void> _sendFormData() async {
+    if (_formKey.currentState?.validate() ?? false) {
+      // Llamar a la función que va a enviar los datos
+      try {
+        var uri = Uri.parse('http://200.2.202.154:8045/controlvehiculos/insert.php');
+        var response = await http.post(uri, body: {
+          'fecha': fecha ?? '',
+          'hora': hora ?? '',
+          'jornada': selectedJornada ?? '',
+          'destino': destinoActividad ?? '',
+          'patente': patente ?? '',
+          'kilometraje': kilometraje ?? '',
+        });
+
+        debugPrint('Request enviado a: $uri');
+        debugPrint('Body enviado: ${{
+          'fecha': fecha,
+          'hora': hora,
+          'jornada': selectedJornada,
+          'destino': destinoActividad,
+          'patente': patente,
+          'kilometraje': kilometraje,
+        }}');
+
+        if (response.statusCode == 200) {
+          var data = jsonDecode(response.body);
+          if (data['success'] == true) {
+            _showErrorMessage('Formulario enviado correctamente');
+          } else {
+            _showErrorMessage('Error al enviar los datos: ${data['message']}');
+          }
+        } else {
+          _showErrorMessage('Error en la solicitud HTTP: ${response.statusCode}');
+        }
+      } catch (e) {
+        _showErrorMessage('Ocurrió un error: $e');
+      }
+    }
+  }
+
+
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -162,21 +207,56 @@ class _FormScreenState extends State<FormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,  // Fondo blanco
-        elevation: 0,  // Elimina la sombra del AppBar
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        elevation: 0,
         title: Padding(
-          padding: const EdgeInsets.only(left: 0),  // Eliminar padding para mover el logo hacia la izquierda
+          padding: const EdgeInsets.only(left: 0),
           child: Image.asset(
             'Logo-CTR1.png',
-            width: 80,  // Ajusta el tamaño del logo aquí
-            height: 80,  // Ajusta el tamaño del logo aquí
+            width: 80,
+            height: 80,
           ),
         ),
+        actions: [
+          // Botón de Bitácora en el AppBar
+          TextButton(
+            onPressed: () {
+            },
+            child: Text(
+              'Bitacora',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+              ),
+            ),
+          ),
+
+          // Botón de Mantenimiento
+          TextButton(
+            onPressed: () {
+
+              // Navegar a la pantalla de Mantenimiento
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => MantForm()),
+              );
+            },
+            child: Text(
+              'Mantenimiento',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,  // Alinea el texto hacia la izquierda
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Bitácora Camioneta',
@@ -187,6 +267,7 @@ class _FormScreenState extends State<FormScreen> {
               ),
             ),
             SizedBox(height: 8),
+
             Text(
               'Ingrese los datos',
               style: TextStyle(
@@ -262,6 +343,28 @@ class _FormScreenState extends State<FormScreen> {
                     ),
                     SizedBox(height: 16),
 
+                    // Destino de actividad
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Destino de actividad',
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(color: customColor),
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          destinoActividad = value;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Ingrese el destino de actividad';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16),
+
                     // Supervisor
                     TextFormField(
                       decoration: InputDecoration(
@@ -317,7 +420,6 @@ class _FormScreenState extends State<FormScreen> {
                         ),
                       ),
                       controller: TextEditingController(text: kilometraje),
-                      readOnly: true,
                     ),
                     SizedBox(height: 16),
 
@@ -333,14 +435,15 @@ class _FormScreenState extends State<FormScreen> {
                               aspectRatio: _cameraController!.value.aspectRatio,
                               child: CameraPreview(_cameraController!),
                             ),
-                            // Recuadro blanco centrado
+
+                            // Recuadro blanco camara
                             Center(
                               child: Container(
-                                width: 200,  // Ancho del recuadro
-                                height: 150, // Alto del recuadro
+                                width: 200,
+                                height: 150,
                                 decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.white, width: 4), // Borde blanco
-                                  borderRadius: BorderRadius.circular(10),  // Bordes redondeados
+                                  border: Border.all(color: Colors.white, width: 4),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
                             ),
@@ -353,6 +456,7 @@ class _FormScreenState extends State<FormScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
+
                         // Tomar Foto
                         Expanded(
                           child: ElevatedButton.icon(
@@ -378,6 +482,7 @@ class _FormScreenState extends State<FormScreen> {
                           ),
                         ),
                         SizedBox(width: 16),
+
                         // Seleccionar Foto desde la galería
                         Expanded(
                           child: ElevatedButton.icon(
@@ -428,19 +533,23 @@ class _FormScreenState extends State<FormScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton(
           onPressed: () async {
-            if (!_formKey.currentState!.validate()) return;
+            if (!_formKey.currentState!.validate()) return;//validacion del form
 
+            //se maneja si es necesario o no enfiar la foto
             if (odometroImage == null) {
               _showErrorMessage('Por favor, tome o seleccione una foto.');
               return;
             }
 
+            //ubicacion
             if (latitude == null || longitude == null) {
               await _getLocation();
               if (latitude == null || longitude == null) {
                 return;
               }
             }
+            // Llamada a la función que envía los datos
+            await _sendFormData();
 
             print('Formulario completado con éxito');
             ScaffoldMessenger.of(context).showSnackBar(

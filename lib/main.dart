@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:prueba/screens/form_selection_screen.dart';
 import 'package:prueba/screens/pantallalogin.dart'; // Importamos la pantalla de login
 
 void main() {
