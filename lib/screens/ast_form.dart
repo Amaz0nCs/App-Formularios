@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // Para trabajar con archivos
-
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
 import '../controllers/ast_controller.dart';
 import '../widgets/fecha_hora_widget.dart';
 import '../widgets/question_widget.dart';
+import 'package:flutter/services.dart';
 
 class AstFormScreen extends StatefulWidget {
   final String correoTrabajador;
@@ -290,18 +293,97 @@ class _AstFormScreenState extends State<AstFormScreen> {
                   // Botón de envío
                   Center(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (_isFormValid()) {
-                          // Si el formulario es válido, procesar el envío
-                          final answers = controller.getSelectedAnswers();
-                          print(answers);
-                          print("Área o Sector Físico: ${areaController.text}");
-                          print("Correo del Trabajador: ${trabajadorEmailController.text}");
-                          print("Correo del Supervisor: ${supervisorEmailController.text}");
+                          try {
+                            // Obtener las respuestas del formulario
+                            final answers = controller.getSelectedAnswers();
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Formulario enviado')),
-                          );
+                            // Cargar las fuentes NotoSans desde la raíz
+                            final regularFont =
+                            pw.Font.ttf(await rootBundle.load('NotoSans-Regular.ttf'));
+                            final boldFont =
+                            pw.Font.ttf(await rootBundle.load('NotoSans-Bold.ttf'));
+
+                            // Crear un PDF
+                            final pdf = pw.Document();
+
+                            // Agregar contenido al PDF
+                            pdf.addPage(
+                              pw.Page(
+                                build: (pw.Context context) {
+                                  return pw.Column(
+                                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                                    children: [
+                                      pw.Text(
+                                        'Análisis de Trabajo Seguro (AST)',
+                                        style: pw.TextStyle(font: boldFont, fontSize: 20),
+                                      ),
+                                      pw.SizedBox(height: 16),
+                                      pw.Text(
+                                        'Área o Sector Físico: ${areaController.text}',
+                                        style: pw.TextStyle(font: regularFont),
+                                      ),
+                                      pw.Text(
+                                        'Correo del Trabajador: ${trabajadorEmailController.text}',
+                                        style: pw.TextStyle(font: regularFont),
+                                      ),
+                                      pw.Text(
+                                        'Correo del Supervisor: ${supervisorEmailController.text}',
+                                        style: pw.TextStyle(font: regularFont),
+                                      ),
+                                      pw.SizedBox(height: 16),
+                                      pw.Text(
+                                        'Respuestas a las preguntas:',
+                                        style: pw.TextStyle(font: boldFont),
+                                      ),
+                                      ...answers.entries.map(
+                                            (entry) => pw.Text(
+                                          '${entry.key}: ${entry.value}',
+                                          style: pw.TextStyle(font: regularFont),
+                                        ),
+                                      ),
+                                      pw.SizedBox(height: 16),
+                                      pw.Text(
+                                        'Imágenes seleccionadas:',
+                                        style: pw.TextStyle(font: boldFont),
+                                      ),
+                                      ...selectedImages.map((image) {
+                                        final imageFile = pw.MemoryImage(
+                                          File(image.path).readAsBytesSync(),
+                                        );
+                                        return pw.Image(imageFile, height: 100, width: 100);
+                                      }),
+                                    ],
+                                  );
+                                },
+                              ),
+                            );
+
+                            // Obtener la ubicación de Descargas
+                            final directory = await getExternalStorageDirectory();
+                            final downloadDir = Directory('${directory!.parent.parent.parent.parent.path}/Download');
+                            if (!downloadDir.existsSync()) {
+                              downloadDir.createSync();
+                            }
+                            final filePath = '${downloadDir.path}/AST_Formulario.pdf';
+
+                            // Guardar el PDF localmente
+                            final file = File(filePath);
+                            await file.writeAsBytes(await pdf.save());
+
+                            // Notificación al usuario
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('PDF guardado en Descargas: $filePath')),
+                            );
+
+                            print("PDF creado. Archivo guardado en $filePath");
+                          } catch (e) {
+                            print("Error al generar el PDF: $e");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Ocurrió un error al generar el PDF')),
+                            );
+                          }
                         } else {
                           // Si no es válido, mostrar un mensaje
                           ScaffoldMessenger.of(context).showSnackBar(
