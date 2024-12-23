@@ -1,8 +1,5 @@
-// ignore_for_file: unused_import
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'form_selection_screen.dart';  // Asegúrate de importar la pantalla de selección de formulario
 
@@ -15,12 +12,12 @@ class PantallaLogin extends StatefulWidget {
 
 class _PantallaLoginState extends State<PantallaLogin> {
   final _formKey = GlobalKey<FormState>();
-  String? username;
+  String? correo;
   String? password;
 
   // Función de login
-  Future<void> login(String username, String password) async {
-    final url = Uri.parse('http://200.2.202.154:8045/controlvehiculos/login.php'); // URL para cambiarla después a la del backend
+  Future<void> login(String correo, String password) async {
+    final url = Uri.parse('http://10.0.2.2/login.php');
     try {
       final response = await http.post(
         url,
@@ -28,7 +25,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
-          'username': username,
+          'correo': correo,
           'password': password,
         }),
       );
@@ -37,13 +34,20 @@ class _PantallaLoginState extends State<PantallaLogin> {
 
       if (response.statusCode == 200) {
         try {
+          // Verificar si la respuesta es un JSON válido
           final data = jsonDecode(response.body);
-          if (data['success']) {
-            // Si el login es exitoso, navega a la pantalla de selección de formulario
-            String patente = data['patente'];
-            String supervisor = data['supervisor'];
-            String jornada = data['jornada'];
 
+          // Verificamos si el login fue exitoso
+          if (data['success']) {
+            // Si el login es exitoso, extrae los datos, manejando valores nulos de manera segura
+            String patente = data['patente'] ?? '';
+            String supervisor = data['supervisor'] ?? '';
+            String jornada = data['jornada'] ?? '';
+            String correoTrabajador = data['correo_trabajador'] ?? '';
+            String correoSupervisor = data['supervisor_email'] ?? '';
+
+
+            // Navega a la pantalla de selección de formulario, pasando los datos
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -51,16 +55,20 @@ class _PantallaLoginState extends State<PantallaLogin> {
                   patente: patente,
                   supervisor: supervisor,
                   jornada: jornada,
+                  correo: correo,
+                  correoTrabajador: correoTrabajador,
+                  correoSupervisor: correoSupervisor,
                 ),
               ),
             );
           } else {
+            // Si no es exitoso, muestra el mensaje del servidor
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(data['message'])),
+              SnackBar(content: Text(data['message'] ?? 'Error desconocido')),
             );
           }
         } catch (e) {
-          print("Error al procesar la respuesta: $e");
+          print("Error al procesar la respuesta JSON: $e");
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Error al procesar la respuesta del servidor')),
           );
@@ -144,7 +152,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                       const SizedBox(height: 16),
                       TextFormField(
                         decoration: InputDecoration(
-                          labelText: 'Nombre de usuario',
+                          labelText: 'Ingresa tu Correo',
                           labelStyle: const TextStyle(color: Color(0xFF000000)),
                           focusedBorder: OutlineInputBorder(
                             borderSide: const BorderSide(color: Color(
@@ -157,12 +165,12 @@ class _PantallaLoginState extends State<PantallaLogin> {
                         ),
                         onChanged: (value) {
                           setState(() {
-                            username = value;
+                            correo = value;
                           });
                         },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Por favor ingrese el nombre de usuario';
+                            return 'Por favor ingrese el correo';
                           }
                           return null;
                         },
@@ -200,7 +208,7 @@ class _PantallaLoginState extends State<PantallaLogin> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (_formKey.currentState?.validate() ?? false) {
-                              login(username!, password!);
+                              login(correo!, password!);
                             }
                           },
                           style: ElevatedButton.styleFrom(

@@ -13,12 +13,14 @@ class FormScreen extends StatefulWidget {
   final String? jornada;
   final String? supervisor;
   final String? patente;
+  final String? correo;
 
   const FormScreen({
     super.key,
     this.jornada,
     this.supervisor,
     this.patente,
+    this.correo,
   });
 
   @override
@@ -54,7 +56,7 @@ class _FormScreenState extends State<FormScreen> {
 
     // Iniciar la fecha y hora del sistema
     final now = DateTime.now();
-    fecha = DateFormat('dd/MM/yyyy').format(now);
+    fecha = DateFormat('yyyy-MM-dd').format(now);
     hora = DateFormat('HH:mm').format(now);
 
     // Iniciar los valores recibidos por los parámetros de arriba
@@ -145,45 +147,94 @@ class _FormScreenState extends State<FormScreen> {
       _showErrorMessage('Ocurrió un error al procesar la imagen: $e');
     }
   }
-
-  // Función para enviar los datos del formulario
+//funcion si
   Future<void> _sendFormData() async {
     if (_formKey.currentState?.validate() ?? false) {
-      // Llamar a la función que va a enviar los datos
       try {
-        var uri = Uri.parse('http://200.2.202.154:8045/controlvehiculos/insert.php');
-        var response = await http.post(uri, body: {
+        print('Valor de Correo antes de enviar: ${widget.correo}');
+
+        var uri = Uri.parse(
+            'http://10.0.2.2/insert.php');
+
+        // Preparamos los datos como un mapa de clave-valor
+        var formData = {
           'fecha': fecha ?? '',
           'hora': hora ?? '',
           'jornada': selectedJornada ?? '',
           'destino': destinoActividad ?? '',
           'patente': patente ?? '',
           'kilometraje': kilometraje ?? '',
-        });
+          'correo': widget.correo ?? '',
+          'id_area': '1',
+          'direccion': address ?? '',
+        };
+
+        // Enviar la solicitud POST
+        var response = await http.post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            // Usar 'application/json' para enviar JSON
+          },
+          body: jsonEncode(formData), // Codificar los datos en formato JSON
+        );
 
         debugPrint('Request enviado a: $uri');
-        debugPrint('Body enviado: ${{
-          'fecha': fecha,
-          'hora': hora,
-          'jornada': selectedJornada,
-          'destino': destinoActividad,
-          'patente': patente,
-          'kilometraje': kilometraje,
-        }}');
+        debugPrint('Body enviado: ${jsonEncode(formData)}');
 
+        // Revisar el estado de la respuesta
         if (response.statusCode == 200) {
           var data = jsonDecode(response.body);
+
           if (data['success'] == true) {
-            _showErrorMessage('Formulario enviado correctamente');
+            // Si la respuesta es exitosa
+            print('Formulario completado con éxito');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Formulario enviado con éxito'),
+                backgroundColor: Colors.green,
+              ),
+            );
           } else {
-            _showErrorMessage('Error al enviar los datos: ${data['message']}');
+            // Si la respuesta no es exitosa, mostrar el mensaje de error
+            print('Error al enviar los datos: ${data['message']}');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al enviar los datos: ${data['message']}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
         } else {
-          _showErrorMessage('Error en la solicitud HTTP: ${response.statusCode}');
+          // Si el estado HTTP no es 200, mostrar el código de error
+          print('Error en la solicitud HTTP: ${response.statusCode}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Error en la solicitud HTTP: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       } catch (e) {
-        _showErrorMessage('Ocurrió un error: $e');
+        // Manejo de errores en caso de problemas con la solicitud o el procesamiento
+        print('Ocurrió un error: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ocurrió un error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+    } else {
+      // En caso de que la validación del formulario falle
+      print('Por favor, complete todos los campos correctamente');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor, complete todos los campos correctamente'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -551,13 +602,6 @@ class _FormScreenState extends State<FormScreen> {
             // Llamada a la función que envía los datos
             await _sendFormData();
 
-            print('Formulario completado con éxito');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Formulario enviado con éxito'),
-                backgroundColor: Colors.green,
-              ),
-            );
           },
           child: Text('Enviar', style: TextStyle(color: buttonTextColor)),
           style: ElevatedButton.styleFrom(
